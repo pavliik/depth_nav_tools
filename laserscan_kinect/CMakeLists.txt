@@ -3,7 +3,7 @@ project(laserscan_kinect)
 
 # Enable C++11 standard
 set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
-#set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED COMPONENTS 
              roscpp image_geometry image_transport 
@@ -21,6 +21,7 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(LaserScanKinect src/laserscan_kinect.cpp)
+add_dependencies(LaserScanKinect ${PROJECT_NAME}_gencfg)
 target_link_libraries(LaserScanKinect ${catkin_LIBRARIES})
 
 add_library(LaserScanKinectNode src/laserscan_kinect_node.cpp)
