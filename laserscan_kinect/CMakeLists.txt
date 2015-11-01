@@ -5,10 +5,12 @@ project(laserscan_kinect)
 set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
 #set(CMAKE_BUILD_TYPE Release)
 
-find_package(catkin REQUIRED roscpp image_geometry image_transport nodelet dynamic_reconfigure sensor_msgs)
+find_package(catkin REQUIRED COMPONENTS 
+             roscpp image_geometry image_transport 
+             nodelet dynamic_reconfigure sensor_msgs)
 
 # Dynamic reconfigure config
-generate_dynamic_reconfigure_options(cfg/LaserscanKinect.cfg)
+generate_dynamic_reconfigure_options( cfg/LaserscanKinect.cfg )
 
 catkin_package(
   INCLUDE_DIRS include
