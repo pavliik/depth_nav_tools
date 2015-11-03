@@ -9,7 +9,6 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>laserscan_kinect</build_depend>
   <run_depend>laserscan_kinect</run_depend>
 
   <export>
