@@ -57,7 +57,6 @@
 #include <cstdlib>
 
 #include <vector>
-//#include <array>
 
 namespace cliff_detector
 { 
