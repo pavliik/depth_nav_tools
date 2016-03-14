@@ -65,43 +65,42 @@ public:
    *
    * @param rate Frequency of data processing loop in Hz.
    */
-  void setNodeRate(const unsigned int rate);
+  void setNodeRate(const float rate);
   /**
    * @brief getNodeRate gets rate of data processing loop in node.
+   *
    * @return Returns data processing loop rate in Hz.
    */
-  unsigned int getNodeRate();
+  float getNodeRate();
 private:
   /**
    * @brief depthCb is callback which is called when new depth image appear
    *
    * Callback for depth image and camera info.
-   * It converts depth image to laserscan and publishes it at the end.
+   * It runs sensor mount parameters estimation algorithms
    *
    * @param depth_msg Depth image provided by image_transport.
    * @param info_msg CameraInfo provided by image_transport.
    */
   void depthCb(const sensor_msgs::ImageConstPtr& depth_msg,
                const sensor_msgs::CameraInfoConstPtr& info_msg);
-
   /**
    * @brief connectCb is callback which is called when new subscriber connected.
    *
-   * It allow to subscribe depth image and publish laserscan message only when
-   * is laserscan subscriber appear.
+   * It allow to subscribe depth image and publish prepared message only when
+   * is subscriber appear.
    *
    * @param pub Publisher which subscribers are checked.
    */
-  void connectCb(const ros::SingleSubscriberPublisher& pub);
+  void connectCb();
   /**
    * @brief disconnectCb is called when a subscriber stop subscribing
    *
-   * When no one subscribers subscribe laserscan topic, then it stop to subscribe depth image.
+   * When no one subscribers subscribe topics, then it stop to subscribe depth image.
    *
    * @param pub Publisher which subscribers are checked.
    */
-  void disconnectCb(const ros::SingleSubscriberPublisher& pub);
-
+  void disconnectCb();
   /**
    * @brief reconfigureCb is dynamic reconfigure callback
    *
@@ -111,28 +110,26 @@ private:
    * @param level Dynamic Reconfigure level.
    */
   void reconfigureCb(depth_sensor_pose::DepthSensorPoseConfig& config, uint32_t level);
-
+//-------------------------------------------------------------------------------------------------
 private: // Private fields
-  // Node loop frequency in Hz
-  unsigned int node_rate_hz_;
 
-  /// Private node handler used to generate the transport hints in the connectCb.
-  ros::NodeHandle pnh_;
-  /// Subscribes to synchronized Image CameraInfo pairs.
-  image_transport::ImageTransport it_;
-  /// Subscriber for image_transport
-  image_transport::CameraSubscriber sub_;
+  float node_rate_hz_;                    ///< Node loop frequency in Hz
+  ros::NodeHandle pnh_;                   ///< Private node handler
 
-  ros::Publisher pub_height_; ///< Publisher for ... messages
-  ros::Publisher pub_angle_; ///< Publisher for ... messages
-  /// Publisher for image_transport
-  image_transport::Publisher pub_;
+  image_transport::ImageTransport it_;    ///< Subscribes to synchronized Image CameraInfo pairs
+  image_transport::CameraSubscriber sub_; ///< Subscriber for image_transport
 
-  ///< Dynamic reconfigure server
+  ros::Publisher pub_height_;             ///< Publisher for estimated sensor height
+  ros::Publisher pub_angle_;              ///< Publisher for estimated sensor tilt angle
+  image_transport::Publisher pub_;        ///< Publisher for image_transport
+
+  /// Dynamic reconfigure server
   dynamic_reconfigure::Server<depth_sensor_pose::DepthSensorPoseConfig> srv_;
 
-  depth_sensor_pose::DepthSensorPose calib_;
-  ///< Prevents the connectCb and disconnectCb from being called until everything is initialized.
+  /// Object which contain estimation methods
+  depth_sensor_pose::DepthSensorPose estimator_;
+
+  /// Prevents the connectCb and disconnectCb from being called until everything is initialized
   boost::mutex connection_mutex_;
 };
 }

@@ -1,7 +1,7 @@
 /******************************************************************************
  * Software License Agreement (BSD License)
  *
- * Copyright (c) 2015, Michal Drwiega (drwiega.michal@gmail.com)
+ * Copyright (c) 2016, Michal Drwiega (drwiega.michal@gmail.com)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,139 +28,139 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 /**
- * @file   main.cpp
+ * @file   depth_sensor_pose_node.cpp
  * @author Michal Drwiega (drwiega.michal@gmail.com)
- * @date   11.2015
+ * @date   2016
  * @brief  depth_sensor_pose package
  */
 
-#include <depth_sensor_pose/depth_sensor_pose_node.h>
+#include "depth_sensor_pose/depth_sensor_pose_node.h"
+
+#define MAX_NODE_RATE 30
 
 using namespace depth_sensor_pose;
 
-//==============================================================================
+//=================================================================================================
 DepthSensorPoseNode::DepthSensorPoseNode(ros::NodeHandle& n, ros::NodeHandle& pnh):
   node_rate_hz_(1), pnh_(pnh), it_(n), srv_(pnh)
 {
   boost::mutex::scoped_lock lock(connection_mutex_);
   
-  // Set callback for dynamic reconfigure server
+  // Dynamic reconfigure server callback
   srv_.setCallback(boost::bind(&DepthSensorPoseNode::reconfigureCb, this, _1, _2));
   
+  // Lazy subscription implementation
+  // Tilt angle and height publisher
+  pub_height_ = n.advertise<std_msgs::Float64>("depth_sensor_pose/height", 2,
+        boost::bind(&DepthSensorPoseNode::connectCb, this),
+        boost::bind(&DepthSensorPoseNode::disconnectCb, this));
+
+  pub_angle_ = n.advertise<std_msgs::Float64>("depth_sensor_pose/tilt_angle", 2,
+        boost::bind(&DepthSensorPoseNode::connectCb, this),
+        boost::bind(&DepthSensorPoseNode::disconnectCb, this));
+
   // New depth image publisher
-/*  pub_ = it_.advertise("depth_sensor_pose/depth", 1,
+  pub_ = it_.advertise("depth_sensor_pose/depth", 1,
                        boost::bind(&DepthSensorPoseNode::connectCb, this),
-                       boost::bind(&DepthSensorPoseNode::disconnectCb, this));*/
-  pub_ = it_.advertise("depth_sensor_pose/depth", 1);
-
-  // Lazy subscription to depth image topic
-  pub_height_ = n.advertise<std_msgs::Float64>(
-        "depth_sensor_pose/height", 2,
-        boost::bind(&DepthSensorPoseNode::connectCb, this, _1),
-        boost::bind(&DepthSensorPoseNode::disconnectCb, this, _1));
-
-  pub_angle_ = n.advertise<std_msgs::Float64>(
-        "depth_sensor_pose/tilt_angle", 2,
-        boost::bind(&DepthSensorPoseNode::connectCb, this, _1),
-        boost::bind(&DepthSensorPoseNode::disconnectCb, this, _1));
-
+                       boost::bind(&DepthSensorPoseNode::disconnectCb, this));
 }
 
-//==============================================================================
+//=================================================================================================
 DepthSensorPoseNode::~DepthSensorPoseNode()
 {
   sub_.shutdown();
 }
 
 //=================================================================================================
-void DepthSensorPoseNode::setNodeRate(const unsigned int rate)
+void DepthSensorPoseNode::setNodeRate(const float rate)
 {
-  if (rate <= 30)
+  if (rate <= MAX_NODE_RATE)
     node_rate_hz_ = rate;
   else
-    node_rate_hz_ = 30;
+    node_rate_hz_ = MAX_NODE_RATE;
 }
 
 //=================================================================================================
-unsigned int DepthSensorPoseNode::getNodeRate()
+float DepthSensorPoseNode::getNodeRate()
 {
   return node_rate_hz_;
 }
 
-//==============================================================================
+//=================================================================================================
 void DepthSensorPoseNode::depthCb( const sensor_msgs::ImageConstPtr& depth_msg,
-                                         const sensor_msgs::CameraInfoConstPtr& info_msg)
+                                   const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
   try
   {
-    // Calculate calibration parameters -- sensor pose
-    calib_.calibration(depth_msg, info_msg);
+    // Estimation of parameters -- sensor pose
+    estimator_.estimateParams(depth_msg, info_msg);
 
     std_msgs::Float64 height, tilt_angle;
-    height.data = calib_.getSensorMountHeight();
-    tilt_angle.data = calib_.getSensorTiltAngle();
+    height.data = estimator_.getSensorMountHeight();
+    tilt_angle.data = estimator_.getSensorTiltAngle();
 
-    ROS_ERROR("height = %.4f angle = %.4f", calib_.getSensorMountHeight(), calib_.getSensorTiltAngle());
+    ROS_ERROR("height = %.4f angle = %.4f", estimator_.getSensorMountHeight(),
+              estimator_.getSensorTiltAngle());
 
     pub_height_.publish(height);
     pub_angle_.publish(tilt_angle);
 
     // Publishes new depth image with added downstairs
-    if (calib_.getPublishDepthEnable())
-      pub_.publish(calib_.new_depth_msg_);
+    if (estimator_.getPublishDepthEnable())
+      pub_.publish(estimator_.new_depth_msg_);
   }
   catch (std::runtime_error& e)
   {
-    ROS_ERROR_THROTTLE(1.0, "Could not convert depth image to laserscan: %s", e.what());
+    ROS_ERROR_THROTTLE(1.0, "Could not to run estimatation procedure: %s", e.what());
   }
 }
 
-//==============================================================================
-void DepthSensorPoseNode::connectCb(const ros::SingleSubscriberPublisher& pub)
+//=================================================================================================
+void DepthSensorPoseNode::connectCb()
 {
   boost::mutex::scoped_lock lock(connection_mutex_);
   if (!sub_ && (pub_height_.getNumSubscribers() > 0 || pub_angle_.getNumSubscribers() > 0
-      || pub_.getNumSubscribers() > 0))
+                || pub_.getNumSubscribers() > 0))
   {
     ROS_DEBUG("Connecting to depth topic.");
     image_transport::TransportHints hints("raw", ros::TransportHints(), pnh_);
-    sub_ = it_.subscribeCamera("image", 10, &DepthSensorPoseNode::depthCb, this, hints);
+    sub_ = it_.subscribeCamera("image", 1, &DepthSensorPoseNode::depthCb, this, hints);
   }
 }
 
-//==============================================================================
-void DepthSensorPoseNode::disconnectCb(const ros::SingleSubscriberPublisher& pub)
+//=================================================================================================
+void DepthSensorPoseNode::disconnectCb()
 {
   boost::mutex::scoped_lock lock(connection_mutex_);
   if (pub_height_.getNumSubscribers() == 0 && pub_angle_.getNumSubscribers() == 0
-&& pub_.getNumSubscribers() == 0)
+      && pub_.getNumSubscribers() == 0)
   {
     ROS_DEBUG("Unsubscribing from depth topic.");
     sub_.shutdown();
   }
 }
 
-//==============================================================================
-void DepthSensorPoseNode::reconfigureCb(
-    depth_sensor_pose::DepthSensorPoseConfig& config, uint32_t level)
+//=================================================================================================
+void DepthSensorPoseNode::reconfigureCb( depth_sensor_pose::DepthSensorPoseConfig& config,
+                                         uint32_t level )
 {
-  node_rate_hz_ = (unsigned int) config.rate;
+  node_rate_hz_ = (float) config.rate;
 
-  calib_.setRangeLimits(config.range_min, config.range_max);
-  calib_.setSensorMountHeightMin(config.mount_height_min);
-  calib_.setSensorMountHeightMax(config.mount_height_max);
-  calib_.setSensorTiltAngleMin(config.tilt_angle_min);
-  calib_.setSensorTiltAngleMax(config.tilt_angle_max);
+  estimator_.setRangeLimits(config.range_min, config.range_max);
+  estimator_.setSensorMountHeightMin(config.mount_height_min);
+  estimator_.setSensorMountHeightMax(config.mount_height_max);
+  estimator_.setSensorTiltAngleMin(config.tilt_angle_min);
+  estimator_.setSensorTiltAngleMax(config.tilt_angle_max);
 
-  calib_.setPublishDepthEnable(config.publish_depth);
-  calib_.setCamModelUpdate(config.cam_model_update);
-  calib_.setUsedDepthHeight((unsigned int)config.used_depth_height);
-  calib_.setDepthImgStepRow(config.depth_img_step_row);
-  calib_.setDepthImgStepCol(config.depth_img_step_col);
+  estimator_.setPublishDepthEnable(config.publish_depth);
+  estimator_.setCamModelUpdate(config.cam_model_update);
+  estimator_.setUsedDepthHeight((unsigned int)config.used_depth_height);
+  estimator_.setDepthImgStepRow(config.depth_img_step_row);
+  estimator_.setDepthImgStepCol(config.depth_img_step_col);
 
-  calib_.setRansacDistanceThresh(config.ransac_dist_thresh);
-  calib_.setRansacMaxIter(config.ransac_max_iter);
-  calib_.setGroundMaxPoints(config.ground_max_points);
+  estimator_.setRansacDistanceThresh(config.ransac_dist_thresh);
+  estimator_.setRansacMaxIter(config.ransac_max_iter);
+  estimator_.setGroundMaxPoints(config.ground_max_points);
 
-  calib_.setReconfParamsUpdated(true);
+  estimator_.setReconfParamsUpdated(true);
 }

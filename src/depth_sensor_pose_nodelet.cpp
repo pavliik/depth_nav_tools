@@ -60,5 +60,5 @@ private:
 }
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_DECLARE_CLASS(depth_sensor_pose, DepthSensorPoseNodelet, depth_sensor_pose::DepthSensorPoseNodelet, nodelet::Nodelet);
+PLUGINLIB_DECLARE_CLASS(depth_sensor_pose, DepthSensorPoseNodelet,depth_sensor_pose::DepthSensorPoseNodelet, nodelet::Nodelet);
 

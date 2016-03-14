@@ -28,9 +28,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 /**
- * @file   main.cpp
+ * @file   depth_sensor_pose.h
  * @author Michal Drwiega (drwiega.michal@gmail.com)
- * @date   11.2015
+ * @date   2016
  * @brief  depth_sensor_pose package
  */
 
@@ -44,6 +44,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/image_encodings.h>
 #include <image_geometry/pinhole_camera_model.h>
+
 #include <sstream>
 #include <limits.h>
 #include <math.h>
@@ -63,8 +64,10 @@
 
 #include <Eigen/Core>
 
+#define DEBUG 1
+
 //#define 		DATA_TO_FILE
-//#define 		DEBUG_INFO
+//#define       DEBUG_INFO
 //#define 		DEBUG_CALIBRATION
 
 namespace depth_sensor_pose
@@ -79,24 +82,23 @@ public:
   /**
      * Converts the information in a depth image (sensor_msgs::Image) to a sensor_msgs::LaserScan.
      *
-     * This function converts the information in the depth encoded image (UInt16 or Float32 encoding) into
-     * a sensor_msgs::LaserScan as accurately as possible.  To do this, it requires the synchornized Image/CameraInfo
-     * pair associated with the image.
+     * This function converts the information in the depth encoded image (UInt16) into
+     * a sensor_msgs::LaserScan as accurately as possible.  To do this, it requires the
+     * synchornized Image/CameraInfo pair associated with the image.
      *
      * @param depth_msg UInt16 or Float32 encoded depth image.
      * @param info_msg CameraInfo associated with depth_msg
      * @return sensor_msgs::LaserScanPtr for the center row(s) of the depth image.
      *
      */
-  void calibration(const sensor_msgs::ImageConstPtr& depth_msg,
+  void estimateParams(const sensor_msgs::ImageConstPtr& depth_msg,
                    const sensor_msgs::CameraInfoConstPtr& info_msg);
   /**
      * Sets the minimum and maximum range for the sensor_msgs::LaserScan.
      *
-     * rangeMin is used to determine how close of a value to allow through when multiple radii correspond to the same
-     * angular increment.  rangeMax is used to set the output message.
+     * rangeMin is used to determine how close of a value to allow through when multiple radii
+     * correspond to the same angular increment.  rangeMax is used to set the output message.
      *
-  /**
      * @param rangeMin Minimum range to assign points to the laserscan, also minimum range to use points in the output scan.
      * @param rangeMax Maximum range to use points in the output scan.
      *
@@ -241,21 +243,25 @@ private: // Private methods
    */
   void sensorPoseCalibration(const sensor_msgs::ImageConstPtr& depth_msg, double & tilt, double & height);
 
+  //-----------------------------------------------------------------------------------------------
+public: // Public fields
+
+  sensor_msgs::Image new_depth_msg_;
 
 private: // Private fields
 
   //----------------------------------------------------------------------------
-  // ROS parameters configurated with config. files or dynamic_reconfigure
+  // ROS parameters configurated with config files or dynamic_reconfigure
   float        range_min_;            ///< Stores the current minimum range to use
   float        range_max_;            ///< Stores the current maximum range to use
 
-  float        mount_height_min_;     ///< Height of sensour mount from ground
-  float        mount_height_max_;     ///< Height of sensour mount from ground
-  float        tilt_angle_min_;       ///< Angle of sensor tilt
-  float        tilt_angle_max_;        ///< Angle of sensor tilt
+  float        mount_height_min_;     ///< Min height of sensor mount from ground
+  float        mount_height_max_;     ///< Max height of sensor mount from ground
+  float        tilt_angle_min_;       ///< Min angle of sensor tilt in degrees
+  float        tilt_angle_max_;       ///< Max angle of sensor tilt in degrees
 
-  bool         publish_depth_enable_; ///< Determines if depth should be republished
-  bool         cam_model_update_;     ///< Determines if continuously cam model update required
+  bool         publish_depth_enable_; ///< Determines if modified depth image should be published
+  bool         cam_model_update_;     ///< Determines if continuously cam model update is required
   unsigned int used_depth_height_;    ///< Used depth height from img bottom (px)
   unsigned int depth_image_step_row_; ///< Rows step in depth processing (px).
   unsigned int depth_image_step_col_; ///< Columns step in depth processing (px).
@@ -282,11 +288,6 @@ private: // Private fields
   std::vector<unsigned int>dist_to_ground_max_;
   std::vector<unsigned int>dist_to_ground_min_;
 
-
-  //-----------------------------------------------------------------------------------------------
-public: // Public fields
-
-  sensor_msgs::Image new_depth_msg_;
 };
 
 template <typename T>

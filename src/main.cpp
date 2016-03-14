@@ -30,8 +30,9 @@
 /**
  * @file   main.cpp
  * @author Michal Drwiega (drwiega.michal@gmail.com)
- * @date   11.2015
- * @brief  depth_sensor_pose package
+ * @date   2016
+ * @brief  depth_sensor_pose estimates height and tilt angle of depth sensor mount
+ *         based on ground position
  */
 
 #include <ros/ros.h>
@@ -39,15 +40,15 @@
 
 int main(int argc, char **argv)
 {
- ros::init(argc, argv, "depth_sensor_pose");
+  ros::init(argc, argv, "depth_sensor_pose");
   ros::NodeHandle n;
   ros::NodeHandle pnh("~");
   
-  depth_sensor_pose::DepthSensorPoseNode calibrator(n, pnh);
-  
+  depth_sensor_pose::DepthSensorPoseNode estimator(n, pnh);
+
   while (ros::ok())
   {
-    ros::Rate rate(calibrator.getNodeRate());
+    ros::Rate rate(estimator.getNodeRate());
     ros::spinOnce();
     rate.sleep();
   }

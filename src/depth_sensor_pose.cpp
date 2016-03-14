@@ -30,7 +30,7 @@
 /**
  * @file   main.cpp
  * @author Michal Drwiega (drwiega.michal@gmail.com)
- * @date   11.2015
+ * @date   2016
  * @brief  depth_sensor_pose package
  */
 
@@ -54,30 +54,32 @@ DepthSensorPose::~DepthSensorPose()
 }
 
 //=================================================================================================
-void DepthSensorPose::calibration( const sensor_msgs::ImageConstPtr& depth_msg,
-                                         const sensor_msgs::CameraInfoConstPtr& info_msg)
+void DepthSensorPose::estimateParams( const sensor_msgs::ImageConstPtr& depth_msg,
+                                      const sensor_msgs::CameraInfoConstPtr& info_msg )
 {
+#if DEBUG
+  ROS_DEBUG("Start estimation procedure");
+#endif
   // Update data based on depth sensor parameters only if new params values
   // or turned on continuous data calculations
   if(reconf_serv_params_updated_ || cam_model_update_)
   {
     camera_model_.fromCameraInfo(info_msg);
 
-    double vert_min, vert_max;
-    double cx = camera_model_.cx(), cy = camera_model_.cy();
+    double cx = camera_model_.cx(), cy = camera_model_.cy(), vert_min, vert_max;
 
-    // Calculate fields of views angles - vertical and horizontal
+    // Calculate vertical field of view angles
     fieldOfView(vert_min, vert_max, cx, 0, cx, cy, cx, depth_msg->height -1);
     double vertical_fov = vert_max - vert_min;
 
+#if DEBUG
+    ROS_DEBUG("Recalculate distance to ground coefficients for image rows.");
+#endif
     calcDeltaAngleForImgRows(vertical_fov);
-
     dist_to_ground_max_.resize(camera_model_.fullResolution().height);
     dist_to_ground_min_.resize(camera_model_.fullResolution().height);
-
     calcGroundDistancesForImgRows(mount_height_max_,tilt_angle_min_, dist_to_ground_max_);
     calcGroundDistancesForImgRows(mount_height_min_,tilt_angle_max_, dist_to_ground_min_);
-
 
     reconf_serv_params_updated_ = false;
 #ifdef DEBUG_INFO
@@ -136,6 +138,7 @@ void DepthSensorPose::calibration( const sensor_msgs::ImageConstPtr& depth_msg,
     throw std::runtime_error(ss.str());
   }
 }
+
 //=================================================================================================
 void DepthSensorPose::setRangeLimits( const float rmin, const float rmax )
 {
@@ -249,8 +252,7 @@ double DepthSensorPose::lengthOfVector(const cv::Point3d& vec) const
 }
 
 //=================================================================================================
-double DepthSensorPose::angleBetweenRays(const cv::Point3d& ray1,
-                                               const cv::Point3d& ray2) const
+double DepthSensorPose::angleBetweenRays(const cv::Point3d& ray1, const cv::Point3d& ray2) const
 {
   double dot = ray1.x*ray2.x + ray1.y*ray2.y + ray1.z*ray2.z;
 
@@ -259,7 +261,7 @@ double DepthSensorPose::angleBetweenRays(const cv::Point3d& ray1,
 
 //=================================================================================================
 void DepthSensorPose::fieldOfView(double & min, double & max, double x1, double y1,
-                                        double xc, double yc, double x2, double y2)
+                                  double xc, double yc, double x2, double y2)
 {
   cv::Point2d raw_pixel_left(x1, y1);
   cv::Point2d rect_pixel_left = camera_model_.rectifyPoint(raw_pixel_left);
@@ -292,9 +294,8 @@ void DepthSensorPose::calcDeltaAngleForImgRows(double vertical_fov)
 }
 
 //=================================================================================================
-void DepthSensorPose::calcGroundDistancesForImgRows(double mount_height,
-                                                          double tilt_angle,
-                                                          std::vector<unsigned int>& distances)
+void DepthSensorPose::calcGroundDistancesForImgRows(double mount_height, double tilt_angle,
+                                                    std::vector<unsigned int>& distances)
 {
   const double alpha = tilt_angle * M_PI / 180.0; // Sensor tilt angle in radians
   const unsigned int img_height = camera_model_.fullResolution().height;
@@ -319,7 +320,7 @@ void DepthSensorPose::calcGroundDistancesForImgRows(double mount_height,
 
 //=================================================================================================
 void DepthSensorPose::getGroundPoints( const sensor_msgs::ImageConstPtr& depth_msg,
-                                             pcl::PointCloud<pcl::PointXYZ>::Ptr& points)
+                                       pcl::PointCloud<pcl::PointXYZ>::Ptr& points)
 {
   enum point { Row, Col, Depth };
 
@@ -366,7 +367,6 @@ void DepthSensorPose::getGroundPoints( const sensor_msgs::ImageConstPtr& depth_m
     }
   }
 
-
 #ifdef DEBUG_CALIBRATION
   std::ostringstream s;
   s << " getGroundPoints: imgHeight = " << imgH
@@ -388,6 +388,11 @@ void DepthSensorPose::getGroundPoints( const sensor_msgs::ImageConstPtr& depth_m
 void DepthSensorPose::sensorPoseCalibration(
     const sensor_msgs::ImageConstPtr& depth_msg, double& tilt, double& height)
 {
+
+
+
+
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>);
 
 
