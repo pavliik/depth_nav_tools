@@ -18,7 +18,8 @@ but it is necessary to know height of sensor optical center and tilt angle in fr
                            points.
 - depth_nav_msgs -- specific messages for other packages.
 
-
+## Deprecated
+Please use version of package for ROS Kinetic.
 
 ## ROS Documentation 
 A more detailed, standard ROS-style documentation of this package can be found on the ROS wiki at:
