@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(nav_layer_from_points)
 
-set(CMAKE_CXX_FLAGS "-std=c++03 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -27,6 +27,7 @@ catkin_package(
 add_library(costmap_layers src/costmap_layer.cpp )
 
 add_dependencies(costmap_layers depth_nav_msgs_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS})
+target_link_libraries(costmap_layers ${catkin_LIBRARIES})
 
 install(FILES costmap_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}

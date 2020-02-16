@@ -44,7 +44,7 @@ using costmap_2d::LETHAL_OBSTACLE;
 using costmap_2d::FREE_SPACE;
 
 PLUGINLIB_EXPORT_CLASS(nav_layer_from_points::NavLayerFromPoints, costmap_2d::Layer)
-
+ 
 namespace nav_layer_from_points
 {
   //=================================================================================================
@@ -54,7 +54,7 @@ namespace nav_layer_from_points
     first_time_ = true;
 
     ros::NodeHandle nh("~/" + name_), g_nh;
-    sub_points_ = nh.subscribe("/downstairs_detector/points", 1,
+    sub_points_ = nh.subscribe("/cliff_detector/points", 1,
                                &NavLayerFromPoints::pointsCallback, this);
 
     rec_server_ = new dynamic_reconfigure::Server<NavLayerFromPointsConfig>(nh);

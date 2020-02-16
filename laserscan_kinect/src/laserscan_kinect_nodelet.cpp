@@ -58,5 +58,5 @@ private:
 } // end of namespace
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_DECLARE_CLASS(laserscan_kinect, LaserScanKinectNodelet,laserscan_kinect::LaserScanKinectNodelet, nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(laserscan_kinect::LaserScanKinectNodelet, nodelet::Nodelet);
 

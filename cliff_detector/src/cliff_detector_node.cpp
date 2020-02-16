@@ -54,6 +54,9 @@ CliffDetectorNode::CliffDetectorNode( ros::NodeHandle& n, ros::NodeHandle& pnh )
 
   // Publisher for stairs points msg
   pub_points_ = n.advertise<depth_nav_msgs::Point32List>("cliff_detector/points", 2);
+  image_transport::TransportHints hints("raw", ros::TransportHints(), pnh_);
+  sub_ = it_.subscribeCamera("image", 1, &CliffDetectorNode::depthCb, this, hints);
+
 }
 
 //=================================================================================================
@@ -106,8 +109,8 @@ void CliffDetectorNode::connectCb()
   if (!sub_ && pub_.getNumSubscribers() > 0)
   {
     ROS_DEBUG("Connecting to depth topic.");
-    image_transport::TransportHints hints("raw", ros::TransportHints(), pnh_);
-    sub_ = it_.subscribeCamera("image", 1, &CliffDetectorNode::depthCb, this, hints);
+    //image_transport::TransportHints hints("raw", ros::TransportHints(), pnh_);
+    //sub_ = it_.subscribeCamera("image", 1, &CliffDetectorNode::depthCb, this, hints);
   }
 }
 
@@ -115,11 +118,13 @@ void CliffDetectorNode::connectCb()
 void CliffDetectorNode::disconnectCb()
 {
   boost::mutex::scoped_lock lock(connection_mutex_);
+  /*
   if (pub_.getNumSubscribers() == 0)
   {
     ROS_DEBUG("Unsubscribing from depth topic.");
     sub_.shutdown();
   }
+  */
 }
 
 //=================================================================================================
